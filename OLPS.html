@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+    <script src="js/d3.min.js"></script>
+    <script src="js/crossfilter.min.js"></script>
+    <script src="js/dc.min.js"></script>
+    <script src="js/reductio.min.js"></script>
+    <script src="js/jQueryv3.4.1.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/FileSaver.js"></script>
+    <script src="data/data_v2.js"></script>
+    <link rel="stylesheet" href="css/dc.css">
+    <link rel="stylesheet" href="css/bootstrap.css">
+    <link rel="stylesheet" href="css/custom.css">
+</head>
+
+<body>
+
+    <div class="modal" id="LandingModal" tabindex="-1" role="dialog" aria-labelledby="LandingModalLabel" aria-hidden="false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="d-flex">
+                        <!--<div>
+                            <a class='card-header navbar-brand' href='index.html'><img src="images/DCWP_Logo_Stacked_rgb.png" height="50" width="100" alt="OLPS"></a>
+                        </div>-->
+                        <div >
+                            <h2>OLPS Divisional Dashboard</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body container-fluid">
+                    <h4>Quick Intro for Users</h4>
+                    <dl class="dl-horizontal">
+                        <dd>This dataset consists of Intake Records with an Intake Date within the selected time period. There are five time periods to choose from, they are: Current Calendar Year (CY), Previous Calendar Year (PCY), Current Fiscal Year (FY), Previous Fiscal Year (PFY), and Last 90 Days (L90).
+                        </dd>
+                        
+                        <dd>Selecting a value in any widget will automatically filter the page, and multiple values can be selected per widget. Filters placed on widgets may be reset by re-selecting the filtered value or by clicking the reset button pertaining to the filtered widget. All filters can be reset at once by clicking the Reset All option on the upper-right corner. Lastly, you can filter against the time chart by clicking and dragging over the period of interest. </dd>
+                        
+                        <dd>Record level data is provided in a table in the bottom of the page. Five records are displayed at a time, and the user can view the dataset using the Next and Previous buttons. Clicking on the column headers will sort the data by the selected header. Lastly, the queried dataset is available for CSV download with the click of the Download button on the bottom-left corner of the table.</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button id="modalEnter" class="btn btn-secondary" role="button" type="button" data-dismiss="modal" tabindex='0'>Enter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class = "row" id="mainRow">
+        <div class="col-md-12" align="middle">
+            <div class="card border-dark mb-3" id="freezeThis">
+                <div class = "row">
+                    <div class="col-sm-3"><h2>Intakes Received</h2></div>
+                    <div class="col-sm-6" style="padding-top: 5px">
+                        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                            <label class="btn btn-secondary" id="option1button">
+                                <input type="radio" name="options" id="option1" onclick="timeChart.filterAll(); toggleDate(CYDim); toggleButton('#option1button')">CY
+                            </label>
+                            <label class="btn btn-secondary" id="option2button">
+                                <input type="radio" name="options" id="option2" onclick="timeChart.filterAll(); toggleDate(PCYDim); toggleButton('#option2button')">PCY
+                            </label>
+                            <label class="btn btn-secondary" id="option3button">
+                                <input type="radio" name="options" id="option3" onclick="timeChart.filterAll(); toggleDate(FYDim); toggleButton('#option3button')">FY
+                            </label>
+                            <label class="btn btn-secondary" id="option4button">
+                                <input type="radio" name="options" id="option4" onclick="timeChart.filterAll(); toggleDate(PFYDim); toggleButton('#option4button')">PFY
+                            </label>
+                            <label class="btn btn-secondary" id="option5button">
+                                <input type="radio" name="options" id="option5" onclick="timeChart.filterAll(); toggleDate(L90Dim); toggleButton('#option5button')">L90
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-sm-3" id="countTotal"></div>
+                </div>
+            </div>
+        </div>    
+    </div>
+    <div class = "row" style="margin-top: 4%">
+        <div class="col-md-3" align="middle">
+            <div class="card border-dark mb-3">
+                <div id="topicChart" class="topicChart">
+                    <strong>Topic</strong>
+                    <span class="reset" style="display: none;"></span>
+                    <a class="reset" href="javascript:topicChart.filterAll();dc.redrawAll();updateTable();" style="display: none;">reset</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6" align="middle">
+            <div class="card border-dark mb-3">
+                <div id="timeChart" class="timeChart">
+                    <strong>Time Series</strong>
+                    <span class="reset" style="display: none;"></span>
+                    <a class="reset" href="javascript:timeChart.filterAll();dc.redrawAll();updateTable();" style="display: none;">reset</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3" align="middle">
+            <div class="card border-dark mb-3">
+                <div id="staffChart" class="staffChart">
+                    <strong>Staff</strong>
+                    <span class="reset" style="display: none;"></span>
+                    <a class="reset" href="javascript:staffChart.filterAll();dc.redrawAll();updateTable();" style="display: none;">reset</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class = "row">
+        <div class="col-md-3" align="middle">
+            <div class="card border-dark mb-3">
+                <div id="requestChart" class="requestChart">
+                    <strong>Request Type</strong>
+                    <span class="reset" style="display: none;"></span>
+                    <a class="reset" href="javascript:requestChart.filterAll();dc.redrawAll();updateTable();" style="display: none;">reset</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2" align="middle">
+            <div class="card border-dark mb-3">
+                <div id="languageChart" class="languageChart">
+                    <strong>Language</strong>
+                    <span class="reset" style="display: none;"></span>
+                    <a class="reset" href="javascript:languageChart.filterAll();dc.redrawAll();updateTable();" style="display: none;">reset</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2" align="middle">
+            <div class="card border-dark mb-3">
+                <div id="statusChart" class="statusChart">
+                    <strong>Status</strong>
+                    <span class="reset" style="display: none;"></span>
+                    <a class="reset" href="javascript:statusChart.filterAll();dc.redrawAll();updateTable();" style="display: none;">reset</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2" align="middle">
+            <div class="card border-dark mb-3">
+                <div id="sourceChart" class="sourceChart">
+                    <strong>Source</strong>
+                    <span class="reset" style="display: none;"></span>
+                    <a class="reset" href="javascript:sourceChart.filterAll();dc.redrawAll();updateTable();" style="display: none;">reset</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3" align="middle">
+            <div class="card border-dark mb-3">
+                <div id="outcomeChart" class="outcomeChart">
+                    <strong>Outcome</strong>
+                    <span class="reset" style="display: none;"></span>
+                    <a class="reset" href="javascript:outcomeChart.filterAll();dc.redrawAll();updateTable();" style="display: none;">reset</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class = "row">
+        <div class="col-md-12" align="middle">
+            <div class="card border-dark mb-3">
+                <strong>Record Level Data</strong>
+                <table class='table table-hover table-striped /*table-bordered*/' id='dc-table-graph' style="width: 98%">
+                    <thead>
+                        <tr class='table-header'>
+                        </tr>
+                    </thead>
+                </table>
+                <div class = "row" style="width: 98%">
+                    <div class="col" id="download">
+                        <input id="download" class="btn btn-secondary" role="button" type="button" value="Download" onclick="javascript:download()"/>
+                    </div>
+                    <div class="col" id="paging">
+                        Showing <span id="begin"></span>-<span id="end" style="margin-right: 1%;"></span> <!--of <span id="size"></span>-->
+                        <input id="Prev" class="btn btn-secondary" role="button" type="button" value="Prev" onclick="javascript:prevPage()"/>
+                        <input id="Next" class="btn btn-secondary" role="button" type="button" value="Next" onclick="javascript:nextPage()"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        //Modal
+        $(function() {
+            $('#LandingModal').on('shown.bs.modal',function(){
+                $("#option5button").addClass("active")
+                setTimeout(function () {$('#LandingModal').find('button.close').focus();},500);
+            }).modal('show');
+        });
+
+        //Recycled formulas
+        var colorScheme = d3.scaleOrdinal()
+            .range(['#BDD5E7','#99BDDA','#5F98C6','#2C6593','#1C415E'])
+        var singleColor = colorScheme.range()[2]
+        var formatMonth = d3.timeFormat('%m')
+        var formatYear = d3.timeFormat('%Y')
+        var formatDate = d3.timeFormat('%-m/%-d/%Y')	
+        
+        //Data grouping
+        var finalData = crossfilter(data_v2);
+        var all = finalData.groupAll();
+
+        var dateDim = finalData.dimension(function(d) { 
+            var set = "CY"
+            var period = "Current"
+            var element = new Date(d.DATE1)
+            return dataStandardizer(set, period, element)
+        });
+        var dateGroup = dateDim.group()
+            .reduceCount(function(d) { 
+                var set = "CY"
+                var period = "Current"
+                var element = new Date(d.DATE1)
+                return dataStandardizer(set, period, element)  
+            });
+
+        var fydateDim = finalData.dimension(function(d) { 
+            var set = "FY"
+            var period = "Current"
+            var element = new Date(d.DATE1)
+            return dataStandardizer(set, period, element)
+        });
+        var fydateGroup = fydateDim.group()
+            .reduceCount(function(d) { 
+                var set = "FY"
+                var period = "Current"
+                var element = new Date(d.DATE1)
+                return dataStandardizer(set, period, element)
+            });
+
+        var dayDim = finalData.dimension(function(d) { 
+            var dataDate = new Date(d.DATE1)
+            var currentDate = new Date()
+            var Difference_In_Time = dataDate.getTime() - currentDate.getTime();
+            var Difference_In_Days = Difference_In_Time / (1000 * 3600 * 24);
+            key = Math.floor(Difference_In_Days)
+            return key;
+        });
+        var dayGroup = dayDim.group()
+            .reduceCount(function(d) { 
+                var dataDate = new Date(d.DATE1)
+                var currentDate = new Date()
+                var Difference_In_Time = dataDate.getTime() - currentDate.getTime();
+                var Difference_In_Days = Difference_In_Time / (1000 * 3600 * 24);
+                key = Math.floor(Difference_In_Days)
+                return key;
+            });
+
+        var staffDim = finalData.dimension(function(d) { return d.STAFF });
+        var staffGroup = staffDim.group();
+
+        var topicDim = finalData.dimension(function (d) { return d.TOPIC });
+        var topicGroup = topicDim.group();
+
+        var languageDim = finalData.dimension(function (d) { return d.LANGUAGE });
+        var languageGroup = languageDim.group();
+
+        var statusDim = finalData.dimension(function (d) { return d.STATUS });
+        var statusGroup = statusDim.group();
+
+        var sourceDim = finalData.dimension(function (d) { return d.SOURCE });
+        var sourceGroup = sourceDim.group();
+
+        var requestDim = finalData.dimension(function (d) { return d.REQUEST_TYPE });
+        var requestGroup = requestDim.group();
+
+        var outcomeDim = finalData.dimension(function (d) { return d.OUTCOME });
+        var outcomeGroup = outcomeDim.group();
+
+        var CYDim = finalData.dimension(function (d) { return d.CY > 0 });
+        var CYGroup = CYDim.group();
+
+        var PCYDim = finalData.dimension(function (d) { return d.PCY > 0 });
+        var PCYGroup = PCYDim.group();       
+
+        var FYDim = finalData.dimension(function (d) { return d.FY > 0 });
+        var FYGroup = FYDim.group(); 
+
+        var PFYDim = finalData.dimension(function (d) { return d.PFY > 0 });
+        var PFYGroup = PFYDim.group();
+
+        var L90Dim = finalData.dimension(function (d) { return d.L90 > 0 });
+        var L90Group = L90Dim.group();    
+
+        //Initial L90 Selection
+        L90Dim.filter(1)
+        //$("#option5button").addClass("active") making this button active with Modal call
+        var min = -90
+        var max = 0
+
+        //Create charts
+        var timeChart = dc.lineChart("#timeChart")
+            .height(300)
+            .dimension(dayDim)
+            .group(dayGroup)
+            .x(d3.scaleLinear().domain([min,max]))
+            .brushOn(true)
+            .xUnits(d3.timeMonths)
+            .colors(singleColor)
+            .renderArea(true)
+            .elasticY(true);
+
+        var topicChart = dc.rowChart("#topicChart")
+            .height(300)
+            .dimension(topicDim)
+            .group(topicGroup)
+            .elasticX(true)
+            .colors(singleColor);
+        
+        var staffChart = dc.rowChart('#staffChart')
+            .height(300)
+            .dimension(staffDim)
+            .group(staffGroup)
+            .elasticX(true)
+            .colors(singleColor);
+
+        var languageChart = dc.pieChart('#languageChart')
+            .width(180)
+            .height(180)
+            .radius(80)
+            .innerRadius(30)
+            .dimension(languageDim)
+            .group(languageGroup)
+            .colors(function(d){
+                return colorScheme(d)
+            })
+            .cap(setSliceLimit(languageGroup));
+            
+        var statusChart = dc.pieChart('#statusChart')
+            .width(180)
+            .height(180)
+            .radius(80)
+            .innerRadius(30)
+            .dimension(statusDim)
+            .group(statusGroup)
+            .colors(function(d){
+                return colorScheme(d)
+            })
+            .cap(setSliceLimit(statusGroup));
+
+        var sourceChart = dc.pieChart('#sourceChart')
+            .width(180)
+            .height(180)
+            .radius(80)
+            .innerRadius(30)
+            .dimension(sourceDim)
+            .group(sourceGroup)
+            .colors(function(d){
+                return colorScheme(d)
+            })
+            .cap(setSliceLimit(sourceGroup));
+
+        var requestChart = dc.rowChart("#requestChart")
+            .height(180)
+            .dimension(requestDim)
+            .group(requestGroup)
+            .elasticX(true)
+            .colors(singleColor);
+
+        var outcomeChart = dc.rowChart("#outcomeChart")
+            .height(180)
+            .dimension(outcomeDim)
+            .group(outcomeGroup)
+            .elasticX(true)
+            .colors(singleColor);
+
+        var count = dc.dataCount('#countTotal')
+            .crossfilter(finalData)
+            .groupAll(all)
+            .html({
+            some: 'Record Count: <strong>%filter-count</strong>' +
+                ' <br/> <a href=\'javascript:dc.filterAll(); dc.renderAll(); updateTable();\'>Reset All</a>',
+            all: 'Record Count: <strong>%total-count</strong>'
+        });
+
+        //Create table chart with interactivity
+        var dataTable = dc.dataTable("#dc-table-graph")
+
+            // Programmatically insert header labels for table
+            var tableHeader = d3.select(".table-header")
+                .selectAll("th");
+
+            // Bind data to tableHeader selection.
+            tableHeader = tableHeader.data(
+                [
+                    {label: "B1_ALT_ID", field_name: "B1_ALT_ID", sort_state: "descending"}, // Note Max Conf row starts off as descending
+                    {label: "DATE1", field_name: "DATE1", sort_state: "ascending"},
+                    {label: "STAFF", field_name: "STAFF", sort_state: "ascending"},
+                    {label: "SOURCE", field_name: "SOURCE", sort_state: "ascending"},
+                    {label: "LANGUAGE", field_name: "LANGUAGE", sort_state: "ascending"},
+                    {label: "TOPIC", field_name: "TOPIC", sort_state: "ascending"},
+                    {label: "REQUEST_TYPE", field_name: "REQUEST_TYPE", sort_state: "ascending"},
+                    {label: "ALLEGATION", field_name: "ALLEGATION", sort_state: "ascending"},
+                    {label: "STATUS", field_name: "STATUS", sort_state: "ascending"},
+                    {label: "OUTCOME", field_name: "OUTCOME", sort_state: "ascending"},
+                    {label: "ENFO_RECORD", field_name: "ENFO_RECORD", sort_state: "ascending"}        
+                ]
+            );
+
+            // enter() into virtual selection and create new <th> header elements for each table column
+            tableHeader = tableHeader.enter()
+            .append("th")
+                .text(function (d) { return d.label; }) // Accessor function for header titles
+                //.attr("font-family","sans-serif")
+                //.attr("font-size","1rem")
+                .on("click", tableHeaderCallback);
+
+            function tableHeaderCallback(d) {
+                // Highlight column header being sorted and show bootstrap glyphicon
+                var activeClass = "info";
+
+                d3.selectAll("#dc-table-graph th") // Disable all highlighting and icons
+                    .classed(activeClass, false)
+                    .selectAll("span")
+                    .style("visibility", "hidden") // Hide glyphicon
+
+                var activeSpan = d3.select(this) // Enable active highlight and icon for active column for sorting
+                    .classed(activeClass, true)  // Set bootstrap "info" class on active header for highlight
+                    .select("span")
+                    .style("visibility", "visible");
+
+                // Toggle sort order state to user desired state
+                d.sort_state = d.sort_state === "ascending" ? "descending" : "ascending";
+
+                var isAscendingOrder = d.sort_state === "ascending";
+                dataTable
+                    .order(isAscendingOrder ? d3.ascending : d3.descending)
+                    .sortBy(function(datum) { return datum[d.field_name]; });
+
+                // Reset glyph icon for all other headers and update this headers icon
+                activeSpan.node().className = ''; // Remove all glyphicon classes
+
+                // Toggle glyphicon based on ascending/descending sort_state
+                activeSpan.classed(
+                    isAscendingOrder ? "glyphicon glyphicon-sort-by-attributes" :
+                    "glyphicon glyphicon-sort-by-attributes-alt", true);
+
+                updateTable();
+                dataTable.redraw();
+            }
+
+            // Initialize sort state and sort icon on one of the header columns
+            // Highlight "B1_ALT_ID" cell on page load
+            // This can be done programmatically for user specified column
+            tableHeader.filter(function(d) { return d.label === "B1_ALT_ID"; })
+                .classed("info", true);
+
+            var tableSpans = tableHeader
+                .append("span") // For Sort glyphicon on active table headers
+                    .classed("glyphicon glyphicon-sort-by-attributes-alt", true)
+                    .style("visibility", "hidden")
+                .filter(function(d) { return d.label === "B1_ALT_ID"; })
+                    .style("visibility", "visible");
+
+            var columnFunctions = [
+                function(d) { return d.B1_ALT_ID; },
+                function(d) { return formatDate(new Date(d.DATE1)); },
+                function(d) { return d.STAFF; },
+                function(d) { return d.SOURCE; },
+                function(d) { return d.LANGUAGE; },
+                function(d) { return d.TOPIC; },
+                function(d) { return d.REQUEST_TYPE; },
+                function(d) { return d.ALLEGATION; },
+                function(d) { return d.STATUS; },
+                function(d) { return d.OUTCOME; },
+                function(d) { return d.ENFO_RECORD; }
+            ];
+
+            dataTable.width(960).height(800)
+                .dimension(staffDim)
+                .group(function(d) { return "Dummy"}) // Must pass in. Ignored since .showGroups(false)
+                .size(Infinity)
+                .columns(columnFunctions)
+                .showGroups(false)
+                .sortBy(function(d){ return d.B1_ALT_ID; }) // Initially sort by max_conf column
+                .order(d3.descending);        
+
+            // Data Table Pagination
+            var tableOffset = 0, tablePageSize = 5;
+
+            function updateTable() {
+                // Ensure Prev/Next bounds are correct, especially after filters applied to dc charts
+                var totFilteredRecs = finalData.groupAll().value();
+                
+                // Adjust values of start and end record numbers for edge cases
+                var end = tableOffset + tablePageSize > totFilteredRecs ? totFilteredRecs : tableOffset + tablePageSize;
+                tableOffset = tableOffset >= totFilteredRecs ? Math.floor((totFilteredRecs - 1) / tablePageSize) * tablePageSize : tableOffset;
+                tableOffset = tableOffset < 0 ? 0 : tableOffset; // In case of zero entries
+
+                // Grab data for current page from the dataTable object
+                dataTable.beginSlice(tableOffset);
+                dataTable.endSlice(tableOffset + tablePageSize);
+
+                // Update Table paging buttons and footer text
+                d3.select('span#begin')
+                    .text(end === 0 ? tableOffset : tableOffset + 1); // Correct for "Showing 1 of 0" bug
+                d3.select('span#end')
+                    .text(end);
+                d3.select('#Prev.btn')
+                    .attr('disabled', tableOffset - tablePageSize < 0 ? 'true' : null);
+                d3.select('#Next.btn')
+                    .attr('disabled', tableOffset + tablePageSize >= totFilteredRecs ? 'true' : null);
+                d3.select('span#size').text(totFilteredRecs);
+
+                dataTable.redraw();
+            }
+            // Callback function for clicking "Next" page button
+            function nextPage() {
+                tableOffset += tablePageSize;
+                updateTable();
+            }
+            // Callback function for clicking "Prev" page button
+            function prevPage() {
+                tableOffset -= tablePageSize;
+                updateTable();
+            }
+
+        function toggleDate(d) {
+            CYDim.filterAll()
+            PCYDim.filterAll()
+            FYDim.filterAll()
+            PFYDim.filterAll()
+            L90Dim.filterAll()
+
+            d.filter(1)
+            dc.renderAll();
+            dataTable.redraw();
+            updateTable();
+        }
+
+        function toggleButton(d) {
+            $("#option1button").removeClass("active")
+            $("#option2button").removeClass("active")
+            $("#option3button").removeClass("active")
+            $("#option4button").removeClass("active")
+            $("#option5button").removeClass("active")
+
+            $(d).addClass("active")
+            testScaleX(d)
+        }
+
+        function dataStandardizer(set, period, element) {
+            var value, value2, month, year, key, minValue, maxValue, min, max, tick
+            if ( set == "CY" ) {
+                if ( element != "" ) {
+                    year = formatYear(element).slice(-2)
+                    month = formatMonth(element)
+                    key = parseFloat(year + '.' + month)
+
+                    return key
+                } else {
+                    if ( period == "Current" ) {
+                        year = formatYear(new Date()).slice(-2)
+                        maxValue = formatMonth(new Date())
+                    } else {
+                        year = parseInt(formatYear(new Date()).slice(-2)) - 1
+                        maxValue = "12"
+                    }
+                    minValue = ".01"
+                    min = parseFloat(year+minValue)
+                    max = parseFloat(year+"."+maxValue+"01")
+                    ticks = Math.round((max - min)*100)
+                    
+                    return timeChart
+                        .dimension(dateDim)
+                        .group(dateGroup)
+                        .x(d3.scaleLinear().domain([min,max]))
+                        .xAxis().ticks(ticks)
+                }
+            } else {
+
+                if ( element != "" ) {
+                    if ( parseInt(formatMonth(element)) > 6) {
+                        year = parseInt(formatYear(element).slice(-2)) + 1
+                        value2 = parseInt(formatMonth(element)) - 6
+                        value = "0" + value2               
+                    } else {
+                        year = formatYear(element).slice(-2)
+                        if ( parseInt(formatMonth(element)) > 3 ) {
+                            value = parseInt(formatMonth(element)) + 6
+                        } else {
+                            value2 = parseInt(formatMonth(element)) + 6
+                            value = "0" + value2
+                        }
+                    }
+
+                    key = parseFloat( year + '.' + value)
+                    return key
+                } else {
+                    var check = new Date();
+                    if ( period == "Current" ) {
+                        if ( parseInt(formatMonth(check)) > 6) {
+                            year = parseInt(formatYear(check).slice(-2)) + 1
+                            value2 = parseInt(formatMonth(check)) - 6
+                            maxValue = "0" + value2
+                        } else {
+                            year = formatYear(check).slice(-2)
+                            if ( parseInt(formatMonth(check)) > 3 ) {
+                                maxValue = parseInt(formatMonth(check)) + 6
+                            } else {
+                                value2 = parseInt(formatMonth(check)) + 6
+                                maxValue = "0" + value2
+                            }        
+                        }
+                    } else {   
+                        if ( parseInt(formatMonth(check)) > 6) {
+                            year = parseInt(formatYear(check).slice(-2))              
+                        } else {
+                            year = formatYear(check).slice(-2) - 1
+                        }
+                        maxValue = '12'
+                    }
+                    minValue = ".01"
+                    min = parseFloat(year+minValue)
+                    max = parseFloat(year+"."+maxValue+"01")
+                    ticks = Math.round((max - min)*100)
+
+                    return timeChart
+                        .dimension(fydateDim).group(fydateGroup)
+                        .x(d3.scaleLinear().domain([min,max]))
+                        .xAxis().ticks(ticks)
+                }
+            }
+        }
+
+        function testScaleX(d) {
+            var year,month,value2,min,max,ticks
+        
+            if ( d == '#option1button')  { 
+                var set = "CY"
+                var period = "Current"
+                var element = ""
+                dataStandardizer(set, period, element)
+            } else if ( d == '#option2button' ) {
+                var set = "CY"
+                var period = "Previous"
+                var element = ""
+                dataStandardizer(set, period, element)
+            } else if ( d == '#option3button') {
+                var set = "FY"
+                var period = "Current"
+                var element = ""
+                dataStandardizer(set, period, element)
+            } else if ( d == '#option4button' ) { 
+                var set = "FY"
+                var period = "Previous"
+                var element = ""
+                dataStandardizer(set, period, element)
+            } else if ( d == '#option5button' ) {
+                min = -90
+                max = 0
+                ticks = 8;
+
+                timeChart
+                    .dimension(dayDim)
+                    .group(dayGroup)
+                    .x(d3.scaleLinear().domain([min,max]))
+                    .xAxis().ticks(ticks)
+            }
+
+            dc.renderAll();
+            
+        }
+
+        function setSliceLimit(d) {
+            array = []
+            slicesArray = []
+
+            for ( i in d.all() ) {
+                if ( d.all()[i].value > 0 ) {
+                    array.push(d.all()[i].value)
+                }
+            }
+            
+            var sumArray = array.reduce(function(a, b){
+                return a + b;
+            }, 0);
+
+            for ( i in array ) {
+                percentage = parseFloat(array[i]/sumArray)
+                if ( percentage > .05 ) {
+                    slicesArray.push(array[i])
+                }
+            }
+
+            slices = slicesArray.length
+            return slices
+        }
+
+        function download() {
+            var data = staffDim.top(Infinity);
+            data = data.sort(function(a, b) {
+                return dataTable.order()(dataTable.sortBy()(a), dataTable.sortBy()(b));
+            });
+            data = data.map(function(d) {
+                var row = {};
+                dataTable.columns().forEach(function(c) {
+                    row[dataTable._doColumnHeaderFormat(c)] = dataTable._doColumnValueFormat(c, d);
+                });
+                return row;
+            });
+            var blob = new Blob([d3.csvFormat(data)], {type: "text/csv;charset=utf-8"});
+            saveAs(blob, 'data.csv');
+        }
+
+        dc.renderAll()
+        dataTable.redraw();
+        updateTable();
+            
+    </script>
+
+</body>
